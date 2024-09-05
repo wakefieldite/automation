@@ -1,13 +1,13 @@
-########################################
-# IPinfo.io API Tool
-# https://github.com/wakefieldite/automation/ipinfo.ps1
-########################################
-#Dependencies
-# Install-Module Microsoft.PowerShell.SecretManagement
-# Install-Module Microsoft.PowerShell.SecretStore
-# Note: Do not use SecureString. See https://github.com/dotnet/platform-compat/blob/master/docs/DE0001.md
-# For information on managing secretstore see https://learn.microsoft.com/en-us/powershell/utility-modules/secretmanagement/how-to/manage-secretstore?view=ps-modules
-########################################
+<#
+    IPinfo.io API Tool
+    https://github.com/wakefieldite/automation/ipinfo.ps1
+
+    Dependencies
+        Microsoft.PowerShell.SecretManagement
+        Microsoft.PowerShell.SecretStore
+    Note: Do not use SecureString. See https://github.com/dotnet/platform-compat/blob/master/docs/DE0001.md
+    For information on managing secretstore see https://learn.microsoft.com/en-us/powershell/utility-modules/secretmanagement/how-to/manage-secretstore?view=ps-modules
+#>
 
 # Variable configuration
 $dependencies = @('Microsoft.PowerShell.SecretManagement','Microsoft.PowerShell.SecretStore')
@@ -16,7 +16,7 @@ $secrettoken = "ipinfo-api-token"
 #Dependency Check, installs modules and imports, otherwise imports the dependencies.
 Foreach ($dependency in $dependencies){
     if (Get-Module -ListAvailable -Name $dependency ) {
-        Write-Host "Dependency Check:" $dependency "module exists"
+       # Write-Host "Dependency Check:" $dependency "exists"
         Import-Module $dependency
     }
     else {
@@ -33,7 +33,7 @@ if ($null -eq $SecretVault){
     Write-Host 'No vault found. Creating vault.'
     Register-SecretVault -Name SecretStore -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault
     } else { 
-    Write-Host 'Vault found.'
+   # Write-Host 'Vault found.'
     }
 
 # Check to see if Vault entry exists for IPinfo.io
@@ -50,13 +50,29 @@ if ($null -eq $getsecret){
 }
 
 # Define the input and output file paths
-$inputFile = Read-Host 'Please enter the absolute path of your IP list'
+$inputFile = Read-Host 'Enter the absolute path of your IP list, including the filename and extension. (Default: ./input.txt)'
 if (!$inputfile){
     $inputFile = "./input.txt"
 }
-$outputFile = Read-Host 'Please enter the absolute path for where output.csv is to be written, including the file and extension'
+$outputFile = Read-Host 'Enter the absolute path for where output.csv is to be written, including the filename and extension. (Default: ./output.csv)'
 if (!$outputFile){
     $outputFile = "./output.csv"
+    #
+    if (-not (Test-Path -Path $outputFile)) {
+        # The file does not exist, create it
+        New-Item -Path $outputFile -ItemType File
+    } else {
+        # Clear content in output file
+        Clear-Content $outputFile
+    }
+} else {
+    if (-not (Test-Path -Path $outputFile)) {
+        # The file does not exist, create it
+        New-Item -Path $outputFile -ItemType File
+    } else {
+        # Clear content in output file
+        Clear-Content $outputFile
+    }
 }
 
 # Set Invoke-RestMethod Parameters
@@ -70,11 +86,8 @@ $Params = @{
 # Read the IP addresses from the input file
 $ips = Get-Content -Path $inputFile
 
-# Clear content in output file
-Clear-Content $outputFile
-
 # Create First line of CSV with headers
-Add-Content -Path $outputFile -Value 'ip,hostname,city,region,country,loc,org,postal,timezone'
+Add-Content -Path $outputFile -Value 'ip,hostname,city,country,asn,org'
 
 # Loop through each IP address
 foreach ($ip in $ips) {
@@ -88,15 +101,27 @@ foreach ($ip in $ips) {
         $response = Invoke-RestMethod -uri $url @Params
 
         # Debugging: Print the response to the console
-        Write-Output "Response for IP $ip $response"
+        # Write-Output "Response for IP $ip $response"
 
         # Check response to see if valid data is returned
         if ($response -match 'country') {
             # Debugging: Print the extracted value to the console
-            Write-Output "Extracted Data: $response"
+            # Write-Output "Extracted Data: $response"
 
-            # Append the result to the output file
-            Add-Content -Path $outputFile -Value $($response | ConvertTo-Csv | Select-Object -Index 1)
+            # Prepare data to append to CSV
+            $csvip = $response.ip
+            $csvhostname = $response.hostname
+            $csvcity = $response.city
+            # $csvregion = $response.region # Removed due to data not being needed
+            $csvcountry = $response.country
+            # $csvloc = $response.loc # Removed due to data not being needed and trying to modify the code to work with this data would take more time.
+            $tokenizedorg = $response.org.split(" ") #splitting org to get ASN separated
+            $csvasn = $tokenizedorg[0] # get ASN separated from the ORG string
+            $csvorg =  $response.org -replace "(AS)\w+\s" # Get Org String, without the ASN.
+            # $csvpostal = $response.postal # Removed due to data not being needed
+            # $csvtimezone = $response.timezone # Removed due to data not being needed
+            $csvresponse = "$csvip,$csvhostname,$csvcity,$csvcountry,$csvasn,$csvorg"
+            Add-Content -Path $outputFile -Value $csvresponse
         } else {
             # Debugging: Print a message if the regex did not match
             Write-Output "No match found for IP $ip"
