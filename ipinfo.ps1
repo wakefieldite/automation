@@ -117,11 +117,17 @@ foreach ($ip in $ips) {
             # $csvloc = $response.loc # Removed due to data not being needed and trying to modify the code to work with this data would take more time.
             $tokenizedorg = $response.org.split(" ") #splitting org to get ASN separated
             $csvasn = $tokenizedorg[0] # get ASN separated from the ORG string
-            $csvorg =  $response.org -replace "(AS)\w+\s" # Get Org String, without the ASN.
+            $csvorg = $response.org -replace "(AS)\w+\s" # Get Org String, without the ASN.
             # $csvpostal = $response.postal # Removed due to data not being needed
             # $csvtimezone = $response.timezone # Removed due to data not being needed
             $csvresponse = "$csvip,$csvhostname,$csvcity,$csvcountry,$csvasn,$csvorg"
             Add-Content -Path $outputFile -Value $csvresponse
+
+            # Clearing variables to prevent reuse
+            $vars = @('csvip','csvhostname','csvcity','csvregion','csvcountry','csvloc','tokenizedorg','csvasn','csvorg','csvpostal','csvtimezone')
+            foreach ($var in $vars){
+                Clear-Variable -Name $var
+            }
         } else {
             # Debugging: Print a message if the regex did not match
             Write-Output "No match found for IP $ip"
