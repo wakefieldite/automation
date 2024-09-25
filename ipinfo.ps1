@@ -124,7 +124,7 @@ foreach ($ip in $ips) {
             Add-Content -Path $outputFile -Value $csvresponse
 
             # Clearing variables to prevent reuse
-            $vars = @('csvip','csvhostname','csvcity','csvregion','csvcountry','csvloc','tokenizedorg','csvasn','csvorg','csvpostal','csvtimezone')
+            $vars = @('csvip','csvhostname','csvcity','csvcountry','tokenizedorg','csvasn','csvorg') # commenting out ,'csvregion','csvloc','csvpostal','csvtimezone' as they are not used in the code
             foreach ($var in $vars){
                 Clear-Variable -Name $var
             }
